@@ -49,9 +49,6 @@ let lives = 3;
 let gameStarted = false;
 let ballIsOnPaddle = true;
 
-// Global object to hold our sound instances
-let sounds = {};
-
 // --- Scene Functions ---
 
 function preload() {
@@ -64,42 +61,9 @@ function preload() {
     graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
     graphics.fillCircle(12, 12, 12);
     graphics.generateTexture('ball_texture', 24, 24);
-
-
-    // --- Stable Dynamic Sound Generation --- 
-    const createProceduralSound = (key, freq, type = 'sine', duration = 0.1) => {
-        const audioContext = this.sound.context;
-        const sampleRate = audioContext.sampleRate;
-        const numFrames = sampleRate * duration;
-        const buffer = audioContext.createBuffer(1, numFrames, sampleRate);
-        const channelData = buffer.getChannelData(0);
-
-        for (let i = 0; i < numFrames; i++) {
-            const time = i / sampleRate;
-            const amplitude = Math.max(0, 1.0 - (time / duration));
-            let sample = Math.sin(2 * Math.PI * freq * time) * amplitude * 0.5;
-            if (type === 'square') {
-                sample = Math.sign(sample) * amplitude * 0.3;
-            } else if (type === 'sawtooth') {
-                 sample = ((time * freq) % 1.0) * 2.0 - 1.0 * amplitude * 0.5;
-            }
-            channelData[i] = sample;
-        }
-
-        this.cache.audio.add(key, buffer);
-    };
-
-    // Generate all the sounds we need
-    createProceduralSound('brick', 800, 'square', 0.05);
-    createProceduralSound('paddle', 400, 'sine', 0.08);
-    createProceduralSound('wall', 200, 'sine', 0.08);
 }
 
 function create() {
-    sounds.brick = this.sound.add('brick');
-    sounds.paddle = this.sound.add('paddle');
-    sounds.wall = this.sound.add('wall');
-
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     createBricks.call(this);
@@ -109,12 +73,6 @@ function create() {
 
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
-
-    this.physics.world.on('worldbounds', (body) => {
-        if (body.gameObject === ball) {
-            sounds.wall.play();
-        }
-    });
 
     this.input.on('pointermove', function (pointer) {
         const halfPaddleWidth = paddle.displayWidth / 2;
@@ -209,7 +167,6 @@ function hitBrick(ball, brick) {
     brick.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
-    sounds.brick.play();
 
     if (bricks.countActive(true) === 0) {
         winGame.call(this);
@@ -217,7 +174,6 @@ function hitBrick(ball, brick) {
 }
 
 function hitPaddle(ball, paddle) {
-    sounds.paddle.play();
     let diff = 0;
 
     if (ball.x < paddle.x) {
