@@ -87,23 +87,21 @@ let winSound;
 
 function preload() {
     // --- CORS Error Prevention ---
-    // Check if the game is running via file:// protocol. This is the most reliable place to check.
+    // Check if the game is running via file:// protocol.
     if (window.location.protocol === 'file:') {
-        // Display a clear error message on the screen.
-        const errorStyle = { 
-            fontSize: '24px', 
-            fill: '#ffdddd', 
-            fontFamily: 'Arial', 
-            align: 'center',
-            wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
-        };
-        const errorText = `ERROR: Cannot load game assets.\n\nThis game MUST be run on a web server.\nPlease see instructions in the game.js file.`;
-        
-        this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
-        
-        // Stop the scene's execution entirely. This prevents asset loading and the create function from running.
-        this.scene.stop();
-        return; 
+        // Display a clear error message on the screen after the loader finishes its (empty) queue.
+        this.load.on('complete', () => {
+            const errorStyle = { 
+                fontSize: '24px', 
+                fill: '#ffdddd', 
+                fontFamily: 'Arial', 
+                align: 'center',
+                wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
+            };
+            const errorText = `ERROR: Cannot load game assets.\n\nThis game MUST be run on a web server.\nPlease see instructions in the game.js file.`;
+            this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
+        });
+        return; // Stop adding any assets to the load queue.
     }
 
     // Generate a white rectangle texture for paddle and bricks
@@ -123,6 +121,12 @@ function preload() {
 }
 
 function create() {
+    // --- CORS Error Prevention: Final Safeguard ---
+    // If preload was stopped due to file:// protocol, this halts create() from running and crashing.
+    if (window.location.protocol === 'file:') {
+        return; // Halt execution immediately.
+    }
+
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     createBricks.call(this);
@@ -139,6 +143,7 @@ function create() {
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
 
     this.input.on('pointermove', function (pointer) {
+        if (!paddle) return;
         const halfPaddleWidth = paddle.displayWidth / 2;
         paddle.x = Phaser.Math.Clamp(pointer.x, halfPaddleWidth, this.scale.width - halfPaddleWidth);
     }, this);
@@ -148,11 +153,12 @@ function create() {
 
 function update() {
     if (ballIsOnPaddle) {
-        ball.x = paddle.x;
+        if (ball && paddle) {
+           ball.x = paddle.x;
+        }
     }
 
-    // Check for ball falling out of bounds
-    if (ball.y > this.scale.height) {
+    if (ball && ball.y > this.scale.height) {
         loseLife.call(this);
     }
 }
@@ -198,7 +204,7 @@ function createPaddle() {
 }
 
 function createBall() {
-    ball = this.physics.add.image(this.scale.width / 2, paddle.y - (paddle.displayHeight / 2) - 12, 'ball_texture');
+    ball = this.physics.add.image(paddle.x, paddle.y - (paddle.displayHeight / 2) - 12, 'ball_texture');
     ball.setCircle(12);
     ball.setCollideWorldBounds(true);
     ball.setBounce(1, 1);
