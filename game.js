@@ -45,52 +45,60 @@ let lives = 3;
 let gameStarted = false;
 let ballIsOnPaddle = true;
 
-// NEW: Global object to hold our dynamically generated sounds
+// Global object to hold our sound instances
 let sounds = {};
 
 // --- Scene Functions ---
 
 function preload() {
-    // --- Dynamic Sound Generation using Web Audio API ---
-    // This function creates a synth sound and adds it to the audio cache.
-    const createSound = (key, frequency, type = 'sine', duration = 0.1) => {
+    // --- Stable Dynamic Sound Generation --- 
+    // This new approach creates audio data and adds it directly to Phaser's cache,
+    // ensuring sounds are ready before the game starts.
+    const createProceduralSound = (key, freq, type = 'sine', duration = 0.1) => {
         const audioContext = this.sound.context;
+        const sampleRate = audioContext.sampleRate;
+        const numFrames = sampleRate * duration;
+        const buffer = audioContext.createBuffer(1, numFrames, sampleRate);
+        const channelData = buffer.getChannelData(0);
+
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
 
         oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+        oscillator.frequency.setValueAtTime(freq, 0);
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + duration);
+        gainNode.connect(audioContext.destination); // Required for offline context
 
-        // The actual sound is a short blip. We create a silent audio buffer
-        // to associate with the key, so we can call .play() on it.
-        // The real sound is triggered by the Web Audio API above.
-        // This is a common pattern for procedural audio in Phaser.
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        this.sound.addAudioSprite(key, { sprite: { [key]: { start: 0, end: duration } }, buffer });
+        for (let i = 0; i < numFrames; i++) {
+            const time = i / sampleRate;
+            // A simple way to simulate an ADSR envelope for a 'blip' sound
+            const amplitude = Math.max(0, 1.0 - (time / duration));
+            channelData[i] = Math.sin(2 * Math.PI * freq * time) * amplitude * 0.5;
+            if (type === 'square') {
+                channelData[i] = Math.sign(channelData[i]) * amplitude * 0.3;
+            } else if (type === 'sawtooth') {
+                 channelData[i] = ((time * freq) % 1.0) * 2.0 - 1.0 * amplitude * 0.5;
+            }
+        }
+
+        // Directly add the generated audio buffer to Phaser's audio cache.
+        this.cache.audio.add(key, buffer);
     };
 
-    // Create a helper to generate sounds and store them in our global object
-    const addSound = (key, freq, type, dur) => {
-        // A bit of a hack: create a dummy sound event that we can trigger
-        // and then play the real Web Audio sound inside the 'play' event.
-        this.sound.add(key, { volume: 0 }); // Add a silent phaser sound
-        this.sound.sounds[this.sound.sounds.length-1].on('play', () => createSound(key, freq, type, dur));
-        sounds[key] = this.sound.get(key);
-    }
-
-    addSound('brick', 800, 'square', 0.1);
-    addSound('paddle', 400, 'sine', 0.1);
-    addSound('wall', 200, 'sine', 0.1);
-    addSound('loseLife', 300, 'sawtooth', 0.3); // A lower, longer sound
+    // Generate all the sounds we need
+    createProceduralSound('brick', 800, 'square', 0.05);
+    createProceduralSound('paddle', 400, 'sine', 0.08);
+    createProceduralSound('wall', 200, 'sine', 0.08);
+    createProceduralSound('loseLife', 150, 'sawtooth', 0.3); // Lower and longer sound
 }
 
 function create() {
+    // Now that sounds are guaranteed to be in the cache, we can create sound instances.
+    sounds.brick = this.sound.add('brick');
+    sounds.paddle = this.sound.add('paddle');
+    sounds.wall = this.sound.add('wall');
+    sounds.loseLife = this.sound.add('loseLife');
+
     // Enable world bounds, but disable the bottom one for losing.
     this.physics.world.setBoundsCollision(true, true, true, false);
 
@@ -103,7 +111,7 @@ function create() {
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
 
-    // NEW: Add a listener for the ball hitting the world bounds (walls)
+    // Add a listener for the ball hitting the world bounds (walls)
     this.physics.world.on('worldbounds', (body, up, down, left, right) => {
         if (body.gameObject === ball) {
             sounds.wall.play();
@@ -202,7 +210,7 @@ function hitBrick(ball, brick) {
     brick.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
-    sounds.brick.play(); // NEW: Play brick hit sound
+    sounds.brick.play();
 
     if (bricks.countActive(true) === 0) {
         winGame.call(this);
@@ -210,7 +218,7 @@ function hitBrick(ball, brick) {
 }
 
 function hitPaddle(ball, paddle) {
-    sounds.paddle.play(); // NEW: Play paddle hit sound
+    sounds.paddle.play();
     let diff = 0;
 
     if (ball.x < paddle.x) {
@@ -225,7 +233,7 @@ function hitPaddle(ball, paddle) {
 }
 
 function loseLife() {
-    sounds.loseLife.play(); // NEW: Play lose life sound
+    sounds.loseLife.play();
     lives--;
     livesText.setText('Lives: ' + lives);
 
