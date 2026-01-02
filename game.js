@@ -1,6 +1,12 @@
 class GameScene extends Phaser.Scene {
     constructor() {
         super('GameScene');
+        
+        // --- GAME CONSTANTS ---
+        this.INITIAL_PADDLE_WIDTH = 100;
+        this.PADDLE_SHRINK_RATE = 0.05; // pixels per frame
+        this.PADDLE_MIN_WIDTH = 40;
+        this.POWERUP_CHANCE = 0.2; // 20% chance to drop a powerup
     }
 
     preload() {
@@ -14,14 +20,12 @@ class GameScene extends Phaser.Scene {
         this.gameStarted = false;
 
         // --- CREATE PADDLE ---
-        // A Rectangle GameObject is simpler than generating a texture.
-        this.paddle = this.add.rectangle(400, 550, 100, 20, 0xffffff);
+        this.paddle = this.add.rectangle(400, 550, this.INITIAL_PADDLE_WIDTH, 20, 0xffffff);
         this.physics.add.existing(this.paddle);
         this.paddle.body.setImmovable(true);
         this.paddle.body.setCollideWorldBounds(true);
 
         // --- CREATE BALL ---
-        // We'll generate a circular texture for the ball as it's cleaner.
         if (!this.textures.exists('ball')) {
             let ballGraphics = this.make.graphics();
             ballGraphics.fillStyle(0xffffff);
@@ -32,7 +36,7 @@ class GameScene extends Phaser.Scene {
         this.ball = this.physics.add.image(400, 500, 'ball');
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1);
-        this.ball.body.stop(); // Stop the ball initially
+        this.ball.body.stop(); 
 
         // --- CREATE BRICKS ---
         this.bricks = this.physics.add.group();
@@ -50,16 +54,26 @@ class GameScene extends Phaser.Scene {
                 brick.setImmovable(true);
             }
         }
+        
+        // --- CREATE POWERUPS GROUP ---
+        this.powerups = this.physics.add.group();
+        if (!this.textures.exists('powerup')) {
+            let powerupGraphics = this.make.graphics();
+            powerupGraphics.fillStyle(0x00ccff); // Light blue powerup
+            powerupGraphics.fillRect(0, 0, 30, 15);
+            powerupGraphics.generateTexture('powerup', 30, 15);
+            powerupGraphics.destroy();
+        }
 
         // --- UI TEXT ---
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#FFF' });
         this.livesText = this.add.text(650, 16, 'Lives: 3', { fontSize: '32px', fill: '#FFF' });
-        
         this.startText = this.add.text(400, 400, 'Click to Start', { fontSize: '48px', fill: '#FFF' }).setOrigin(0.5);
 
         // --- COLLIDERS ---
         this.physics.add.collider(this.ball, this.paddle, this.hitPaddle, null, this);
         this.physics.add.collider(this.ball, this.bricks, this.hitBrick, null, this);
+        this.physics.add.collider(this.paddle, this.powerups, this.collectPowerup, null, this);
 
         // --- INPUT HANDLING ---
         this.input.on('pointerdown', () => {
@@ -70,20 +84,27 @@ class GameScene extends Phaser.Scene {
 
         this.input.on('pointermove', (pointer) => {
             if (this.gameStarted) {
-                this.paddle.x = Phaser.Math.Clamp(pointer.x, 50, 750);
+                // Clamp paddle position based on its current width
+                const halfWidth = this.paddle.width / 2;
+                this.paddle.x = Phaser.Math.Clamp(pointer.x, halfWidth, this.physics.world.bounds.width - halfWidth);
             }
         });
     }
 
     update() {
-        // Check if ball falls off the screen
         if (this.ball.y > 600) {
             this.loseLife();
         }
         
-        // Keep the ball on top of the paddle if game hasn't started
         if (!this.gameStarted) {
             this.ball.setPosition(this.paddle.x, 500);
+        } else {
+            // --- Shrink Paddle over time ---
+            if (this.paddle.width > this.PADDLE_MIN_WIDTH) {
+                this.paddle.width -= this.PADDLE_SHRINK_RATE;
+                // Important: Need to update the physics body size to match the display size
+                this.paddle.body.setSize(this.paddle.width, this.paddle.height);
+            }
         }
     }
 
@@ -111,13 +132,39 @@ class GameScene extends Phaser.Scene {
         this.score += 10;
         this.scoreText.setText('Score: ' + this.score);
 
+        // --- Chance to spawn a power-up ---
+        if (Math.random() < this.POWERUP_CHANCE) {
+            let powerup = this.powerups.create(brick.x, brick.y, 'powerup');
+            powerup.setVelocityY(100); // Falls down
+        }
+
         if (this.bricks.countActive() === 0) {
             this.winGame();
         }
     }
+    
+    collectPowerup(paddle, powerup) {
+        powerup.disableBody(true, true); // Remove power-up on collection
+        this.resetPaddleSize();
+        
+        // Optional: Add a visual feedback
+        this.tweens.add({
+            targets: this.paddle,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 100,
+            yoyo: true,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    resetPaddleSize() {
+        this.paddle.width = this.INITIAL_PADDLE_WIDTH;
+        this.paddle.body.setSize(this.paddle.width, this.paddle.height);
+    }
 
     loseLife() {
-        if (!this.gameStarted) return; // Prevent losing multiple lives if ball is already out
+        if (!this.gameStarted) return;
 
         this.lives--;
         this.livesText.setText('Lives: ' + this.lives);
@@ -134,14 +181,15 @@ class GameScene extends Phaser.Scene {
         this.startText.setText('Click to Continue');
         this.startText.setVisible(true);
         this.paddle.setPosition(400, 550);
+        this.resetPaddleSize(); // Reset paddle size on new life
         this.ball.setPosition(400, 500);
         this.ball.setVelocity(0, 0);
     }
 
     endGame(isWin = false) {
         this.physics.pause();
-        this.ball.setVisible(false);
-        this.paddle.setVisible(false);
+        // Clean up any falling power-ups
+        this.powerups.clear(true, true);
 
         let message = isWin ? 'You Win!' : 'Game Over';
         let color = isWin ? '#0F0' : '#F00';
@@ -171,7 +219,7 @@ const config = {
             debug: false
         }
     },
-    scene: [GameScene] // Use the new scene class
+    scene: [GameScene]
 };
 
 const game = new Phaser.Game(config);
