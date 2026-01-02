@@ -1,223 +1,151 @@
-class GameScene extends Phaser.Scene {
-    constructor() {
-        super('GameScene');
-        this.score = 0;
-        this.lives = 3;
-        this.gameStarted = false;
-
-        // Brick configuration
-        this.brickInfo = {
-            width: 75,
-            height: 30,
-            count: {
-                row: 5,
-                col: 10
-            },
-            offset: {
-                top: 50,
-                left: 60
-            },
-            padding: 10
-        };
-    }
-
-    preload() {
-        // Dynamically create ball and brick textures
-        this.createBallTexture('ball', 0xffffff, 10); // Create a white ball with radius 10
-        this.createBrickTexture('brick_blue', 0x0000ff);
-        this.createBrickTexture('brick_green', 0x00ff00);
-        this.createBrickTexture('brick_red', 0xff0000);
-        this.createBrickTexture('brick_yellow', 0xffff00);
-        this.createBrickTexture('brick_purple', 0x800080);
-
-        // Load sound assets
-        this.load.audio('ballHitPaddle', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/paddle_hit.mp3?v=1719972323714');
-        this.load.audio('ballHitBrick', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/brick_hit.mp3?v=1719972322312');
-        this.load.audio('loseLife', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/lose_life.mp3?v=1719972325377');
-    }
-    
-    createBallTexture(name, color, radius) {
-        if (!this.textures.exists(name)) {
-            let graphics = this.make.graphics();
-            graphics.fillStyle(color);
-            graphics.fillCircle(radius, radius, radius);
-            graphics.generateTexture(name, radius * 2, radius * 2);
-            graphics.destroy();
-        }
-    }
-
-    createBrickTexture(name, color) {
-        if (!this.textures.exists(name)) {
-            let graphics = this.make.graphics();
-            graphics.fillStyle(color);
-            graphics.fillRect(0, 0, this.brickInfo.width, this.brickInfo.height);
-            graphics.generateTexture(name, this.brickInfo.width, this.brickInfo.height);
-            graphics.destroy();
-        }
-    }
-
-    create() {
-        this.score = 0;
-        this.lives = 3;
-        this.gameStarted = false;
-
-        this.physics.world.checkCollision.down = false;
-
-        this.paddle = this.physics.add.sprite(400, 550, null).setDisplaySize(100, 20);
-        this.paddle.setTint(0xffffff);
-        this.paddle.setImmovable(true);
-        this.paddle.setCollideWorldBounds(true);
-
-        this.ball = this.physics.add.image(400, 530, 'ball');
-        this.ball.setCircle(this.ball.width / 2);
-        this.ball.setBounce(1, 1);
-        this.ball.setFriction(0, 0);
-        this.ball.setCollideWorldBounds(true);
-
-        this.bricks = this.physics.add.staticGroup();
-        const brickColors = ['brick_red', 'brick_yellow', 'brick_green', 'brick_blue', 'brick_purple'];
-
-        for (let r = 0; r < this.brickInfo.count.row; r++) {
-            for (let c = 0; c < this.brickInfo.count.col; c++) {
-                const brickX = this.brickInfo.offset.left + c * (this.brickInfo.width + this.brickInfo.padding);
-                const brickY = this.brickInfo.offset.top + r * (this.brickInfo.height + this.brickInfo.padding);
-                const colorKey = brickColors[r % brickColors.length];
-                
-                let brick = this.bricks.create(brickX, brickY, colorKey);
-                brick.setOrigin(0, 0).refreshBody();
-            }
-        }
-
-        this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#FFF' });
-        this.livesText = this.add.text(this.sys.game.config.width - 16, 16, 'Lives: 3', { fontSize: '32px', fill: '#FFF' }).setOrigin(1, 0);
-        this.startText = this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Start', { fontSize: '48px', fill: '#FFF' }).setOrigin(0.5);
-
-        this.physics.add.collider(this.ball, this.paddle, this.ballHitPaddle, null, this);
-        this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, null, this);
-
-        this.input.on('pointerdown', () => {
-            if (!this.gameStarted) {
-                this.startGame();
-            }
-        }, this);
-
-        this.input.on('pointermove', (pointer) => {
-            if (this.gameStarted) {
-                this.paddle.x = Phaser.Math.Clamp(pointer.x, this.paddle.width / 2, this.physics.world.bounds.width - this.paddle.width / 2);
-            }
-        }, this);
-    }
-
-    update() {
-        if (this.physics.isPaused) {
-            return;
-        }
-
-        if (!this.gameStarted) {
-            this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
-        }
-
-        if (this.ball.y > this.physics.world.bounds.height + this.ball.height) {
-            this.loseLife();
-        }
-    }
-
-    startGame() {
-        if (this.gameStarted) {
-            return;
-        }
-        
-        this.gameStarted = true;
-        this.startText.setVisible(false);
-        this.ball.setVelocity(-200, -300);
-    }
-
-    ballHitPaddle(ball, paddle) {
-        this.sound.play('ballHitPaddle');
-        let diff = 0;
-        if (ball.x < paddle.x) {
-            diff = paddle.x - ball.x;
-            ball.setVelocityX(-10 * diff);
-        } else if (ball.x > paddle.x) {
-            diff = ball.x - paddle.x;
-            ball.setVelocityX(10 * diff);
-        } else {
-            ball.setVelocityX(2 + Math.random() * 8);
-        }
-    }
-
-    ballHitBrick(ball, brick) {
-        // *** THIS IS THE CRITICAL FIX ***
-        // Replaced the old, crashing method with the correct Phaser 3 way to remove a brick.
-        // disableBody(true, true) hides the brick and removes it from physics calculations.
-        brick.disableBody(true, true);
-        
-        this.sound.play('ballHitBrick');
-        this.score += 10;
-        this.scoreText.setText('Score: ' + this.score);
-
-        if (this.bricks.countActive() === 0) {
-            this.winGame();
-        }
-    }
-
-    loseLife() {
-        if (!this.gameStarted) return;
-
-        this.sound.play('loseLife');
-        this.lives--;
-        this.livesText.setText('Lives: ' + this.lives);
-
-        if (this.lives === 0) {
-            this.gameOver();
-        } else {
-            this.resetLevel();
-        }
-    }
-    
-    resetLevel() {
-        this.gameStarted = false;
-        this.ball.setVelocity(0, 0);
-        this.paddle.setPosition(400, 550);
-        this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
-
-        this.startText.setText('Click to Continue').setVisible(true);
-    }
-
-    gameOver() {
-        this.physics.pause();
-        this.add.text(this.physics.world.bounds.width / 2, 300, 'Game Over', { fontSize: '64px', fill: '#F00' }).setOrigin(0.5);
-        this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
-
-        this.input.once('pointerdown', () => {
-            this.scene.restart();
-        });
-    }
-
-    winGame() {
-        this.physics.pause();
-        this.add.text(this.physics.world.bounds.width / 2, 300, 'You Win!', { fontSize: '64px', fill: '#0F0' }).setOrigin(0.5);
-        this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
-
-        this.input.once('pointerdown', () => {
-            this.scene.restart();
-        });
-    }
-}
-
-const config = {
+let game;
+let config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
-    parent: 'phaser-game',
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 0 },
-            debug: false
+            checkCollision: {
+                up: false,
+                down: false,
+            }
         }
     },
-    scene: [GameScene]
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    },
+    backgroundColor: '#eee'
 };
 
-const game = new Phaser.Game(config);
+let ball;
+let paddle;
+let bricks;
+let score = 0;
+let lives = 3;
+let scoreText;
+let livesText;
+let startText;
+let gameOver = false;
+let gameStarted = false; // <-- FIX: New state variable
+
+function preload() {
+    this.load.image('ball', 'assets/ball.png');
+    this.load.image('paddle', 'assets/paddle.png');
+    this.load.image('brick', 'assets/brick.png');
+}
+
+function create() {
+    ball = this.physics.add.sprite(400, 500, 'ball');
+    ball.setCollideWorldBounds(true);
+    ball.setBounce(1);
+    ball.disableBody(true, true);
+
+    paddle = this.physics.add.sprite(400, 550, 'paddle');
+    paddle.setImmovable(true);
+    paddle.setCollideWorldBounds(true);
+
+    bricks = this.physics.add.group({
+        key: 'brick',
+        repeat: 9,
+        setXY: { x: 80, y: 50, stepX: 70 }
+    });
+    bricks.children.iterate(function (child) {
+        child.setImmovable(true);
+    });
+
+    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
+    livesText = this.add.text(680, 16, 'Lives: 3', { fontSize: '32px', fill: '#000' });
+    startText = this.add.text(400, 300, 'Click to Start', { fontSize: '32px', fill: '#000' });
+    startText.setOrigin(0.5);
+
+    this.physics.add.collider(ball, paddle);
+    this.physics.add.collider(ball, bricks, ballHitBrick, null, this);
+
+    this.input.on('pointerdown', function () {
+        if (gameOver) {
+            restartGame.call(this);
+        } else if (!gameStarted) { // <-- FIX: Check if game has started
+            startGame.call(this);
+        }
+    }, this);
+
+    this.physics.world.on('worldbounds', function(body) {
+        if (body.gameObject === ball && body.blocked.down) {
+            loseLife.call(this);
+        }
+    }, this);
+}
+
+function update() {
+    if (gameStarted) {
+        paddle.x = this.input.x;
+
+        if (paddle.x < 40) {
+            paddle.x = 40;
+        }
+        if (paddle.x > 760) {
+            paddle.x = 760;
+        }
+    }
+}
+
+function ballHitBrick(ball, brick) {
+    brick.disableBody(true, true);
+    score += 10;
+    scoreText.setText('Score: ' + score);
+    if (bricks.countActive() === 0) {
+        this.physics.pause();
+        startText.setText('You Win! Click to Restart');
+        startText.setVisible(true);
+        gameOver = true;
+        gameStarted = false;
+    }
+}
+
+function startGame() {
+    gameStarted = true; // <-- FIX: Set game as started
+    startText.setVisible(false);
+    ball.enableBody(true, 400, 500, true, true);
+    ball.setVelocity(-75, -300);
+    gameOver = false;
+}
+
+function loseLife() {
+    lives--;
+    livesText.setText('Lives: ' + lives);
+    if (lives === 0) {
+        this.physics.pause();
+        gameOver = true;
+        gameStarted = false; // <-- FIX: Reset on game over
+        startText.setText('Game Over! Click to Restart');
+        startText.setVisible(true);
+    } else {
+        gameStarted = false; // <-- FIX: Reset when a life is lost
+        ball.disableBody(true, true);
+        paddle.setPosition(400, 550);
+        startText.setVisible(true);
+    }
+}
+
+function restartGame() {
+    lives = 3;
+    score = 0;
+    gameOver = false;
+    gameStarted = false; // <-- FIX: Reset on restart
+    livesText.setText('Lives: ' + lives);
+    scoreText.setText('Score: ' + score);
+    startText.setVisible(false);
+
+    this.physics.resume();
+    ball.disableBody(true, true);
+    paddle.setPosition(400, 550);
+
+    bricks.children.iterate(function (child) {
+        child.enableBody(true, child.x, child.y, true, true);
+    });
+}
+
+game = new Phaser.Game(config);
