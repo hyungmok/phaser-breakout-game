@@ -76,6 +76,9 @@ class GameScene extends Phaser.Scene {
         // Set ball to collide with walls (top, left, right), but not bottom (due to world setting above)
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1);
+        // *** FIX: Set the physics body to be a circle to prevent getting stuck on corners ***
+        this.ball.setCircle(this.ball.width / 2);
+
 
         // --- Create Bricks with different colors per row ---
         this.bricks = this.physics.add.group();
