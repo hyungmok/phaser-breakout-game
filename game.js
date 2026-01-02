@@ -62,30 +62,23 @@ class GameScene extends Phaser.Scene {
         this.gameStarted = false;
 
         // --- World Physics Setup ---
-        // Allow ball to pass through the bottom of the screen for the lose-life condition
         this.physics.world.checkCollision.down = false;
 
         // --- Create Paddle ---
         this.paddle = this.physics.add.sprite(400, 550, null).setDisplaySize(100, 20);
-        this.paddle.setTint(0xffffff); // Make it white
+        this.paddle.setTint(0xffffff);
         this.paddle.setImmovable(true);
         this.paddle.setCollideWorldBounds(true);
 
         // --- Create Ball ---
         this.ball = this.physics.add.image(400, 530, 'ball');
-        // *** FIX: Refine physics properties to prevent sticking ***
-        // Set the physics body to be a circle
         this.ball.setCircle(this.ball.width / 2);
-        // Set perfect bounce, no energy loss on collision
         this.ball.setBounce(1, 1);
-        // Remove all friction
         this.ball.setFriction(0, 0);
-        // Ensure it collides with the world boundaries (top, left, right)
         this.ball.setCollideWorldBounds(true);
 
-
-        // --- Create Bricks with different colors per row ---
-        this.bricks = this.physics.add.staticGroup(); // Use staticGroup for immovable bricks
+        // --- Create Bricks ---
+        this.bricks = this.physics.add.staticGroup();
         const brickColors = ['brick_red', 'brick_yellow', 'brick_green', 'brick_blue', 'brick_purple'];
 
         for (let r = 0; r < this.brickInfo.count.row; r++) {
@@ -95,7 +88,6 @@ class GameScene extends Phaser.Scene {
                 const colorKey = brickColors[r % brickColors.length];
                 
                 let brick = this.bricks.create(brickX, brickY, colorKey);
-                // For staticGroup, you don't need setImmovable(true), but you need to refresh the body
                 brick.setOrigin(0, 0).refreshBody();
             }
         }
@@ -107,7 +99,8 @@ class GameScene extends Phaser.Scene {
 
         // --- Colliders ---
         this.physics.add.collider(this.ball, this.paddle, this.ballHitPaddle, null, this);
-        this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, null, this);
+        // *** THE DEFINITIVE FIX: Use a process callback to manually prevent the ball from getting stuck ***
+        this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, this.processBallBrickCollision, this);
 
         // --- Input Handling ---
         this.input.on('pointerdown', () => {
@@ -128,7 +121,6 @@ class GameScene extends Phaser.Scene {
             this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
         }
 
-        // Check if ball falls below the world bounds
         if (this.ball.y > this.physics.world.bounds.height + this.ball.height) {
             this.loseLife();
         }
@@ -137,7 +129,29 @@ class GameScene extends Phaser.Scene {
     startGame() {
         this.gameStarted = true;
         this.startText.setVisible(false);
-        this.ball.setVelocity(-200, -300); // Increased initial velocity slightly for better feel
+        this.ball.setVelocity(-200, -300);
+    }
+
+    // *** NEW METHOD: The process callback to force the ball to bounce ***
+    processBallBrickCollision(ball, brick) {
+        // This function is called BEFORE the collision is resolved.
+        // It checks for the "stuck" scenario where the ball is aligned with a brick's bottom edge
+        // and has very little vertical velocity, which can cause the physics engine to fail.
+        const ballBounds = ball.getBounds();
+        const brickBounds = brick.getBounds();
+
+        // Check if the ball's bottom is roughly aligned with the brick's bottom
+        const isAligned = Math.abs(ballBounds.bottom - brickBounds.bottom) < 5; 
+        // Check if vertical velocity is very low
+        const isStuck = Math.abs(ball.body.velocity.y) < 15;
+
+        if (isAligned && isStuck) {
+            // FORCE the ball to move downwards, breaking it out of the sticky situation.
+            ball.body.setVelocityY(150);
+        }
+        
+        // Always return true to allow the standard collision handling (ballHitBrick) to occur.
+        return true;
     }
 
     ballHitPaddle(ball, paddle) {
@@ -160,20 +174,12 @@ class GameScene extends Phaser.Scene {
         this.score += 10;
         this.scoreText.setText('Score: ' + this.score);
 
-        // Make sure ball velocity doesn't drop too low after multiple hits
-        const minSpeed = 300;
-        const currentSpeed = Math.sqrt(ball.body.velocity.x ** 2 + ball.body.velocity.y ** 2);
-        if (currentSpeed < minSpeed) {
-            ball.body.velocity.scale(minSpeed / currentSpeed);
-        }
-
         if (this.bricks.countActive() === 0) {
             this.winGame();
         }
     }
 
     loseLife() {
-        // Prevent this from running multiple times if the ball is already off-screen
         if (!this.gameStarted) return;
 
         this.sound.play('loseLife');
@@ -189,7 +195,6 @@ class GameScene extends Phaser.Scene {
     
     resetLevel() {
         this.gameStarted = false;
-        // Also stop the ball and reset its position immediately
         this.ball.setVelocity(0, 0);
         this.paddle.setPosition(400, 550);
         this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
