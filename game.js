@@ -3,44 +3,35 @@
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
  * 
  * --- 🚨 중요: 게임 실행 방법 (CORS 에러 해결) ---
- * 현재 CORS 정책 에러가 발생하는 이유는 `index.html` 파일을 브라우저에서 직접 열었기 때문입니다.
- * 보안상의 이유로, 브라우저는 로컬 파일 시스템(`file:///`)에서 다른 파일(사운드, 이미지 등)을 불러오는 것을 차단합니다.
+ * 웹서버를 실행하지 않고 `index.html` 파일을 직접 브라우저에서 열면, CORS 보안 정책 때문에 사운드 같은 외부 파일을 불러올 수 없습니다.
+ * 이것은 브라우저의 정상적인 보안 동작이며, 코드를 수정해서 해결할 수 있는 문제가 아닙니다.
  * 
- * 이 문제를 해결하려면, 반드시 로컬 웹 서버를 통해 게임을 실행해야 합니다.
+ * 반드시 아래 방법 중 하나를 사용해 로컬 웹 서버를 실행해야 합니다.
  * 
- * 가장 간단한 두 가지 방법:
- * 
- * 1. Python을 사용하는 방법 (Python이 설치되어 있다면):
- *    - 터미널이나 명령 프롬프트를 열고 이 게임 프로젝트 폴더로 이동합니다.
- *    - `python -m http.server` (Python 3) 또는 `python -m SimpleHTTPServer` (Python 2) 명령어를 실행합니다.
- *    - 브라우저를 열고 `http://localhost:8000` 주소로 접속합니다.
+ * 1. Python을 사용하는 방법 (가장 간단):
+ *    - 터미널(CMD)을 열고 이 게임 프로젝트 폴더로 이동합니다.
+ *    - `python -m http.server` 라고 입력하고 엔터를 칩니다.
+ *    - 웹 브라우저 주소창에 `http://localhost:8000` 을 입력해 접속합니다.
  * 
  * 2. VS Code의 'Live Server' 확장 프로그램 사용:
- *    - Visual Studio Code에서 "Live Server" 확장 프로그램을 설치합니다.
- *    - VS Code 파일 탐색기에서 `index.html` 파일을 마우스 오른쪽 버튼으로 클릭합니다.
- *    - "Open with Live Server"를 선택하면 자동으로 브라우저에서 게임이 열립니다.
+ *    - VS Code 마켓플레이스에서 "Live Server"를 검색해 설치합니다.
+ *    - `index.html` 파일을 마우스 오른쪽 버튼으로 클릭하고 "Open with Live Server"를 선택합니다.
  * 
- * --- IMPORTANT NOTE ON RUNNING THE GAME (FIXING CORS ERROR) ---
- * You are seeing a CORS error because you are opening the index.html file directly.
- * For security reasons, browsers block loading game assets (like sounds and images) from the local file system (`file:///`).
+ * --- IMPORTANT: HOW TO RUN THE GAME (FIXING CORS ERROR) ---
+ * If you open the `index.html` file directly in your browser without a web server, you will get a CORS security error.
+ * This is a standard browser security feature and cannot be fixed by changing the game code.
  * 
- * To fix this, you MUST run the game from a local web server.
+ * You MUST run the game using a local web server. Here are two easy ways:
  * 
- * Here are two simple ways to do that:
+ * 1. Using Python (easiest method):
+ *    - Open a terminal (CMD) in this project folder.
+ *    - Type `python -m http.server` and press Enter.
+ *    - In your web browser, go to `http://localhost:8000`.
  * 
- * 1. Using Python (if you have Python installed):
- *    - Open a terminal or command prompt in your game's project folder.
- *    - Run the command: `python -m http.server` (for Python 3) or `python -m SimpleHTTPServer` (for Python 2).
- *    - Open your browser and go to: http://localhost:8000
- * 
- * 2. Using VS Code Live Server extension:
- *    - Install the "Live Server" extension in Visual Studio Code.
- *    - Right-click on your `index.html` file in the VS Code explorer.
- *    - Select "Open with Live Server". This will automatically open the game in your browser.
+ * 2. Using VS Code 'Live Server' Extension:
+ *    - Install the "Live Server" extension from the VS Code Marketplace.
+ *    - Right-click the `index.html` file and choose "Open with Live Server".
  * -----------------------------------------
- * 
- * This version focuses on stability, clean code, and core gameplay mechanics.
- * This version is updated to scale and fit the entire browser window and fixes rendering issues.
  */
 
 // --- Game Configuration ---
