@@ -61,23 +61,19 @@ class GameScene extends Phaser.Scene {
         this.lives = 3;
         this.gameStarted = false;
 
-        // --- World Physics Setup ---
         this.physics.world.checkCollision.down = false;
 
-        // --- Create Paddle ---
         this.paddle = this.physics.add.sprite(400, 550, null).setDisplaySize(100, 20);
         this.paddle.setTint(0xffffff);
         this.paddle.setImmovable(true);
         this.paddle.setCollideWorldBounds(true);
 
-        // --- Create Ball ---
         this.ball = this.physics.add.image(400, 530, 'ball');
         this.ball.setCircle(this.ball.width / 2);
         this.ball.setBounce(1, 1);
         this.ball.setFriction(0, 0);
         this.ball.setCollideWorldBounds(true);
 
-        // --- Create Bricks ---
         this.bricks = this.physics.add.staticGroup();
         const brickColors = ['brick_red', 'brick_yellow', 'brick_green', 'brick_blue', 'brick_purple'];
 
@@ -92,16 +88,13 @@ class GameScene extends Phaser.Scene {
             }
         }
 
-        // --- UI Text ---
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#FFF' });
         this.livesText = this.add.text(this.sys.game.config.width - 16, 16, 'Lives: 3', { fontSize: '32px', fill: '#FFF' }).setOrigin(1, 0);
         this.startText = this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Start', { fontSize: '48px', fill: '#FFF' }).setOrigin(0.5);
 
-        // --- Colliders ---
         this.physics.add.collider(this.ball, this.paddle, this.ballHitPaddle, null, this);
-        this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, this.processBallBrickCollision, this);
+        this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, null, this);
 
-        // --- Input Handling ---
         this.input.on('pointerdown', () => {
             if (!this.gameStarted) {
                 this.startGame();
@@ -116,25 +109,20 @@ class GameScene extends Phaser.Scene {
     }
 
     update() {
-        // *** FIX: If the physics is paused (like in the "Game Over" state), do nothing. ***
-        // This prevents the loseLife() function from being called repeatedly when the ball is off-screen.
         if (this.physics.isPaused) {
             return;
         }
 
-        // If the game hasn't started, lock the ball to the paddle
         if (!this.gameStarted) {
             this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
         }
 
-        // Check if the ball has fallen off the bottom of the screen
         if (this.ball.y > this.physics.world.bounds.height + this.ball.height) {
             this.loseLife();
         }
     }
 
     startGame() {
-        // This function is only called when a new game or new life starts
         if (this.gameStarted) {
             return;
         }
@@ -142,18 +130,6 @@ class GameScene extends Phaser.Scene {
         this.gameStarted = true;
         this.startText.setVisible(false);
         this.ball.setVelocity(-200, -300);
-    }
-    
-    processBallBrickCollision(ball, brick) {
-        const ballBounds = ball.getBounds();
-        const brickBounds = brick.getBounds();
-        const isAligned = Math.abs(ballBounds.bottom - brickBounds.bottom) < 5; 
-        const isStuck = Math.abs(ball.body.velocity.y) < 15;
-
-        if (isAligned && isStuck) {
-            ball.body.setVelocityY(150);
-        }
-        return true;
     }
 
     ballHitPaddle(ball, paddle) {
@@ -171,8 +147,12 @@ class GameScene extends Phaser.Scene {
     }
 
     ballHitBrick(ball, brick) {
-        this.sound.play('ballHitBrick');
+        // *** THIS IS THE CRITICAL FIX ***
+        // Replaced the old, crashing method with the correct Phaser 3 way to remove a brick.
+        // disableBody(true, true) hides the brick and removes it from physics calculations.
         brick.disableBody(true, true);
+        
+        this.sound.play('ballHitBrick');
         this.score += 10;
         this.scoreText.setText('Score: ' + this.score);
 
@@ -182,7 +162,6 @@ class GameScene extends Phaser.Scene {
     }
 
     loseLife() {
-        // Prevent this from running if the game isn't active
         if (!this.gameStarted) return;
 
         this.sound.play('loseLife');
@@ -197,32 +176,29 @@ class GameScene extends Phaser.Scene {
     }
     
     resetLevel() {
-        this.gameStarted = false; // Set game to not started
+        this.gameStarted = false;
         this.ball.setVelocity(0, 0);
         this.paddle.setPosition(400, 550);
-        // Position ball on top of the paddle
         this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
 
         this.startText.setText('Click to Continue').setVisible(true);
     }
 
     gameOver() {
-        this.physics.pause(); // Pause the game
+        this.physics.pause();
         this.add.text(this.physics.world.bounds.width / 2, 300, 'Game Over', { fontSize: '64px', fill: '#F00' }).setOrigin(0.5);
         this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
 
-        // Listen for a single click to restart the scene
         this.input.once('pointerdown', () => {
             this.scene.restart();
         });
     }
 
     winGame() {
-        this.physics.pause(); // Pause the game
+        this.physics.pause();
         this.add.text(this.physics.world.bounds.width / 2, 300, 'You Win!', { fontSize: '64px', fill: '#0F0' }).setOrigin(0.5);
         this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
 
-        // Listen for a single click to restart the scene
         this.input.once('pointerdown', () => {
             this.scene.restart();
         });
