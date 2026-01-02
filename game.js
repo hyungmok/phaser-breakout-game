@@ -2,7 +2,7 @@
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
  * This version focuses on stability, clean code, and core gameplay mechanics.
- * This version is updated to scale and fit the entire browser window.
+ * This version is updated to scale and fit the entire browser window and fixes rendering issues.
  */
 
 // --- Game Configuration ---
@@ -55,6 +55,17 @@ let sounds = {};
 // --- Scene Functions ---
 
 function preload() {
+    // Generate a white rectangle texture for paddle and bricks
+    let graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
+    graphics.fillRect(0, 0, 1, 1);
+    graphics.generateTexture('pixel', 1, 1);
+    
+    // Generate a white circle texture for the ball
+    graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
+    graphics.fillCircle(12, 12, 12);
+    graphics.generateTexture('ball_texture', 24, 24);
+
+
     // --- Stable Dynamic Sound Generation --- 
     const createProceduralSound = (key, freq, type = 'sine', duration = 0.1) => {
         const audioContext = this.sound.context;
@@ -107,21 +118,17 @@ function create() {
         }
     });
 
-    // --- MODIFICATION START ---
-    // Listen to the global pointermove event and make paddle follow.
     this.input.on('pointermove', function (pointer) {
-        // Clamp paddle position to stay within the game's visible width.
-        const halfPaddleWidth = paddle.width / 2;
+        const halfPaddleWidth = paddle.displayWidth / 2;
         paddle.x = Phaser.Math.Clamp(pointer.x, halfPaddleWidth, this.scale.width - halfPaddleWidth);
     }, this);
-    // --- MODIFICATION END ---
 
     this.input.on('pointerdown', releaseBall, this);
 }
 
 function update() {
     if (ballIsOnPaddle) {
-        ball.body.x = paddle.x - (ball.width / 2);
+        ball.x = paddle.x;
     }
 
     // Check for ball falling out of bounds
@@ -145,12 +152,14 @@ function createBricks() {
     const brickColors = [0xcc2222, 0x22cc22, 0x2222cc, 0xcccc22, 0xcc22cc, 0x22cccc];
     for (let i = 0; i < numRows; i++) {
         for (let j = 0; j < numCols; j++) {
-            const x = startX + j * (brickWidth + brickPadding) + (brickWidth / 2);
-            const y = startY + i * (brickHeight + brickPadding) + (brickHeight / 2);
-            const brick = bricks.create(x, y, null);
-            brick.body.setSize(brickWidth, brickHeight).setAllowGravity(false);
+            const x = startX + j * (brickWidth + brickPadding);
+            const y = startY + i * (brickHeight + brickPadding);
+            const brick = bricks.create(x, y, 'pixel');
+            brick.setOrigin(0,0);
+            brick.displayWidth = brickWidth;
+            brick.displayHeight = brickHeight;
             brick.setTint(brickColors[i]);
-            brick.setBounce(1,1);
+            brick.body.setAllowGravity(false);
         }
     }
 }
@@ -158,18 +167,23 @@ function createBricks() {
 function createPaddle() {
     const paddleWidth = 100;
     const paddleHeight = 20;
-    paddle = this.physics.add.image(this.scale.width / 2, this.scale.height - 50, null)
+    paddle = this.physics.add.image(this.scale.width / 2, this.scale.height - 50, 'pixel')
         .setImmovable();
-    paddle.body.setSize(paddleWidth, paddleHeight).setAllowGravity(false);
+    paddle.setOrigin(0.5, 0.5);
+    paddle.displayWidth = paddleWidth;
+    paddle.displayHeight = paddleHeight;
+    paddle.body.setAllowGravity(false);
+    paddle.setCollideWorldBounds(true);
+    paddle.body.onWorldBounds = true;
 }
 
 function createBall() {
-    const ballRadius = 12;
-    ball = this.physics.add.image(this.scale.width / 2, this.scale.height - 76, null);
-    ball.body.setCircle(ballRadius).setAllowGravity(false);
+    ball = this.physics.add.image(this.scale.width / 2, paddle.y - (paddle.displayHeight / 2) - 12, 'ball_texture');
+    ball.setCircle(12);
     ball.setCollideWorldBounds(true);
     ball.setBounce(1, 1);
     ball.body.onWorldBounds = true;
+    ball.body.setAllowGravity(false);
 }
 
 function createUI() {
@@ -234,7 +248,7 @@ function loseLife() {
 function resetBall() {
     ballIsOnPaddle = true;
     ball.setVelocity(0, 0);
-    ball.setPosition(paddle.x, this.scale.height - 76);
+    ball.setPosition(paddle.x, paddle.y - (paddle.displayHeight / 2) - 12);
 }
 
 function gameOver() {
@@ -267,13 +281,15 @@ function restartGame() {
     livesText.setText('Lives: ' + lives);
     
     startText.setText('Click to Start');
-    startText.setVisible(true);
     
+    // Reset paddle position to center
+    paddle.x = this.scale.width / 2;
+
     resetBall.call(this);
-    ball.enableBody(true, paddle.x, this.scale.height - 76, true, true);
+    ball.enableBody(true, paddle.x, paddle.y - (paddle.displayHeight / 2) - 12, true, true);
     
-    bricks.children.each(function (brick) {
+    bricks.children.each((brick) => {
         brick.enableBody(true, brick.x, brick.y, true, true);
-        brick.setTint(brick.tintTopLeft);
     });
 }
+// --- END OF FILE ---
