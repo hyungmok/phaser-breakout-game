@@ -27,11 +27,11 @@ let startText;
 let gameOver = false;
 let gameStarted = false;
 
-// Sound variables
-let paddleHitSound;
-let brickHitSound;
-let wallHitSound;
-let loseLifeSound;
+// Sound variables (temporarily disabled)
+// let paddleHitSound;
+// let brickHitSound;
+// let wallHitSound;
+// let loseLifeSound;
 
 // Ball speed settings
 const initialBallSpeed = 400;
@@ -54,11 +54,11 @@ const brickInfo = {
 };
 
 function preload() {
-    // Load audio files
-    this.load.audio('paddleHit', 'assets/paddleHit.mp3');
-    this.load.audio('brickHit', 'assets/brickHit.mp3');
-    this.load.audio('wallHit', 'assets/wallHit.mp3');
-    this.load.audio('loseLife', 'assets/loseLife.mp3');
+    // Load audio files (temporarily disabled)
+    // this.load.audio('paddleHit', 'assets/paddleHit.mp3');
+    // this.load.audio('brickHit', 'assets/brickHit.mp3');
+    // this.load.audio('wallHit', 'assets/wallHit.mp3');
+    // this.load.audio('loseLife', 'assets/loseLife.mp3');
 }
 
 function create() {
@@ -88,11 +88,11 @@ function create() {
         graphics.destroy();
     });
 
-    // --- Sound Setup ---
-    paddleHitSound = this.sound.add('paddleHit');
-    brickHitSound = this.sound.add('brickHit');
-    wallHitSound = this.sound.add('wallHit');
-    loseLifeSound = this.sound.add('loseLife');
+    // --- Sound Setup (temporarily disabled) ---
+    // paddleHitSound = this.sound.add('paddleHit');
+    // brickHitSound = this.sound.add('brickHit');
+    // wallHitSound = this.sound.add('wallHit');
+    // loseLifeSound = this.sound.add('loseLife');
 
     // --- Layout and Game Objects ---
     const border = this.add.graphics();
@@ -134,12 +134,12 @@ function create() {
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     
-    // Play sound on world boundary collision
-    this.physics.world.on('worldbounds', (body, up, down, left, right) => {
-        if (body.gameObject === ball && (up || left || right)) {
-            wallHitSound.play();
-        }
-    });
+    // Play sound on world boundary collision (temporarily disabled)
+    // this.physics.world.on('worldbounds', (body, up, down, left, right) => {
+    //     if (body.gameObject === ball && (up || left || right)) {
+    //         wallHitSound.play();
+    //     }
+    // });
 
 
     this.input.on('pointerdown', () => {
@@ -180,7 +180,7 @@ function startGame() {
 }
 
 function hitPaddle(ball, paddle) {
-    paddleHitSound.play();
+    // paddleHitSound.play();
     
     // Increase ball speed
     const currentSpeed = ball.body.velocity.length();
@@ -210,7 +210,7 @@ function hitPaddle(ball, paddle) {
 
 
 function hitBrick(ball, brick) {
-    brickHitSound.play();
+    // brickHitSound.play();
     brick.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
@@ -231,7 +231,7 @@ function hitBrick(ball, brick) {
 }
 
 function loseLife() {
-    loseLifeSound.play();
+    // loseLifeSound.play();
     lives--;
     livesText.setText('Lives: ' + lives);
 
