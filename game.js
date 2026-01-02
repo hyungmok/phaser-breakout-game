@@ -99,7 +99,6 @@ class GameScene extends Phaser.Scene {
 
         // --- Colliders ---
         this.physics.add.collider(this.ball, this.paddle, this.ballHitPaddle, null, this);
-        // *** THE DEFINITIVE FIX: Use a process callback to manually prevent the ball from getting stuck ***
         this.physics.add.collider(this.ball, this.bricks, this.ballHitBrick, this.processBallBrickCollision, this);
 
         // --- Input Handling ---
@@ -117,40 +116,43 @@ class GameScene extends Phaser.Scene {
     }
 
     update() {
+        // *** FIX: If the physics is paused (like in the "Game Over" state), do nothing. ***
+        // This prevents the loseLife() function from being called repeatedly when the ball is off-screen.
+        if (this.physics.isPaused) {
+            return;
+        }
+
+        // If the game hasn't started, lock the ball to the paddle
         if (!this.gameStarted) {
             this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
         }
 
+        // Check if the ball has fallen off the bottom of the screen
         if (this.ball.y > this.physics.world.bounds.height + this.ball.height) {
             this.loseLife();
         }
     }
 
     startGame() {
+        // This function is only called when a new game or new life starts
+        if (this.gameStarted) {
+            return;
+        }
+        
         this.gameStarted = true;
         this.startText.setVisible(false);
         this.ball.setVelocity(-200, -300);
     }
-
-    // *** NEW METHOD: The process callback to force the ball to bounce ***
+    
     processBallBrickCollision(ball, brick) {
-        // This function is called BEFORE the collision is resolved.
-        // It checks for the "stuck" scenario where the ball is aligned with a brick's bottom edge
-        // and has very little vertical velocity, which can cause the physics engine to fail.
         const ballBounds = ball.getBounds();
         const brickBounds = brick.getBounds();
-
-        // Check if the ball's bottom is roughly aligned with the brick's bottom
         const isAligned = Math.abs(ballBounds.bottom - brickBounds.bottom) < 5; 
-        // Check if vertical velocity is very low
         const isStuck = Math.abs(ball.body.velocity.y) < 15;
 
         if (isAligned && isStuck) {
-            // FORCE the ball to move downwards, breaking it out of the sticky situation.
             ball.body.setVelocityY(150);
         }
-        
-        // Always return true to allow the standard collision handling (ballHitBrick) to occur.
         return true;
     }
 
@@ -180,6 +182,7 @@ class GameScene extends Phaser.Scene {
     }
 
     loseLife() {
+        // Prevent this from running if the game isn't active
         if (!this.gameStarted) return;
 
         this.sound.play('loseLife');
@@ -194,29 +197,32 @@ class GameScene extends Phaser.Scene {
     }
     
     resetLevel() {
-        this.gameStarted = false;
+        this.gameStarted = false; // Set game to not started
         this.ball.setVelocity(0, 0);
         this.paddle.setPosition(400, 550);
+        // Position ball on top of the paddle
         this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
 
         this.startText.setText('Click to Continue').setVisible(true);
     }
 
     gameOver() {
-        this.physics.pause();
+        this.physics.pause(); // Pause the game
         this.add.text(this.physics.world.bounds.width / 2, 300, 'Game Over', { fontSize: '64px', fill: '#F00' }).setOrigin(0.5);
         this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
 
+        // Listen for a single click to restart the scene
         this.input.once('pointerdown', () => {
             this.scene.restart();
         });
     }
 
     winGame() {
-        this.physics.pause();
+        this.physics.pause(); // Pause the game
         this.add.text(this.physics.world.bounds.width / 2, 300, 'You Win!', { fontSize: '64px', fill: '#0F0' }).setOrigin(0.5);
         this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Restart', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.5);
 
+        // Listen for a single click to restart the scene
         this.input.once('pointerdown', () => {
             this.scene.restart();
         });
