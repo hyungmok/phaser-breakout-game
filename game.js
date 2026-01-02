@@ -234,7 +234,7 @@ function hitPaddle(ball, paddle) {
 }
 
 function loseLife() {
-    sounds.loseLife.play();
+    // sounds.loseLife.play(); // Sound removed as per user request
     lives--;
     livesText.setText('Lives: ' + lives);
 
