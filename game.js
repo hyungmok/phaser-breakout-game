@@ -83,7 +83,7 @@ function update() {
 
     // Check for ball falling out of bounds
     if (ball.y > 600) {
-        loseLife();
+        loseLife.call(this); // FIX: Pass the scene context
     }
 }
 
@@ -185,7 +185,7 @@ function hitBrick(ball, brick) {
 
     // Check for win condition
     if (bricks.countActive(true) === 0) {
-        winGame();
+        winGame.call(this); // FIX: Pass the scene context
     }
 }
 
@@ -222,9 +222,9 @@ function loseLife() {
     livesText.setText('Lives: ' + lives);
 
     if (lives === 0) {
-        gameOver();
+        gameOver.call(this); // FIX: Pass the scene context
     } else {
-        resetBall();
+        resetBall.call(this); // Also ensure context for consistency
     }
 }
 
@@ -247,7 +247,7 @@ function gameOver() {
     
     // Add a one-time event listener to restart the game on the next click
     this.input.once('pointerdown', () => {
-        restartGame();
+        restartGame.call(this); // Pass the scene context for robustness
     }, this);
 }
 
@@ -261,7 +261,7 @@ function winGame() {
 
     // Add a one-time event listener to restart the game on the next click
     this.input.once('pointerdown', () => {
-        restartGame();
+        restartGame.call(this); // Pass the scene context for robustness
     }, this);
 }
 
@@ -278,6 +278,8 @@ function restartGame() {
     // Reset UI
     scoreText.setText('Score: ' + score);
     livesText.setText('Lives: ' + lives);
+    
+    // Make sure the restart text is the initial 'Click to Start'
     startText.setText('Click to Start');
     startText.setVisible(true);
     
