@@ -93,14 +93,12 @@ function preload() {
     createProceduralSound('brick', 800, 'square', 0.05);
     createProceduralSound('paddle', 400, 'sine', 0.08);
     createProceduralSound('wall', 200, 'sine', 0.08);
-    createProceduralSound('loseLife', 150, 'sawtooth', 0.3);
 }
 
 function create() {
     sounds.brick = this.sound.add('brick');
     sounds.paddle = this.sound.add('paddle');
     sounds.wall = this.sound.add('wall');
-    sounds.loseLife = this.sound.add('loseLife');
 
     this.physics.world.setBoundsCollision(true, true, true, false);
 
@@ -234,7 +232,6 @@ function hitPaddle(ball, paddle) {
 }
 
 function loseLife() {
-    // sounds.loseLife.play(); // Sound removed as per user request
     lives--;
     livesText.setText('Lives: ' + lives);
 
