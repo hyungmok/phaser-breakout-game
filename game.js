@@ -3,6 +3,7 @@
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
  * This version focuses on stability, clean code, and core gameplay mechanics.
  * This version is updated to scale and fit the entire browser window and fixes rendering issues.
+ * This version removes all sound to resolve asset loading errors.
  */
 
 // --- Game Configuration ---
@@ -44,12 +45,6 @@ let scoreText;
 let livesText;
 let startText;
 
-// Sound variables
-let brickHitSound;
-let paddleHitSound;
-let winSound;
-// NOTE: liveLoseSound is intentionally omitted per user request.
-
 let score = 0;
 let lives = 3;
 let gameStarted = false;
@@ -67,13 +62,6 @@ function preload() {
     graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
     graphics.fillCircle(12, 12, 12);
     graphics.generateTexture('ball_texture', 24, 24);
-
-    // --- Preload Audio Assets ---
-    // IMPORTANT: You need to create an 'assets' folder and add these sound files.
-    // For example, you can find free .wav files online and name them accordingly.
-    this.load.audio('brick_hit', 'assets/brick_hit.wav');
-    this.load.audio('paddle_hit', 'assets/paddle_hit.wav');
-    this.load.audio('win_sound', 'assets/win_sound.wav');
 }
 
 function create() {
@@ -83,11 +71,6 @@ function create() {
     createPaddle.call(this);
     createBall.call(this);
     createUI.call(this);
-
-    // --- Create Sound Instances ---
-    brickHitSound = this.sound.add('brick_hit');
-    paddleHitSound = this.sound.add('paddle_hit');
-    winSound = this.sound.add('win_sound');
 
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
@@ -186,20 +169,12 @@ function hitBrick(ball, brick) {
     score += 10;
     scoreText.setText('Score: ' + score);
 
-    if (brickHitSound) {
-        brickHitSound.play(); // Play sound on brick hit
-    }
-
     if (bricks.countActive(true) === 0) {
         winGame.call(this);
     }
 }
 
 function hitPaddle(ball, paddle) {
-    if (paddleHitSound) {
-        paddleHitSound.play(); // Play sound on paddle hit
-    }
-
     let diff = 0;
 
     if (ball.x < paddle.x) {
@@ -216,8 +191,6 @@ function hitPaddle(ball, paddle) {
 function loseLife() {
     lives--;
     livesText.setText('Lives: ' + lives);
-
-    // No sound is played here, as requested.
 
     if (lives === 0) {
         gameOver.call(this);
@@ -246,10 +219,6 @@ function winGame() {
     ball.disableBody(true, true);
     startText.setText('You Win! Click to Restart');
     startText.setVisible(true);
-
-    if (winSound) {
-        winSound.play(); // Play sound on winning
-    }
 
     this.input.once('pointerdown', () => {
         restartGame.call(this);
