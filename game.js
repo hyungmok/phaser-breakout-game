@@ -1,6 +1,8 @@
 /**
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
+ * @notice All audio has been disabled to allow the game to run directly from a local 'file://' path.
+ * Modern browsers block loading audio/assets this way due to security policies (CORS). The correct way to run Phaser games is with a local server.
  */
 
 // --- Game Configuration ---
@@ -47,11 +49,6 @@ let lives = 3;
 let gameStarted = false;
 let ballIsOnPaddle = true;
 
-// Sound variables
-let brickHitSound;
-let paddleHitSound;
-let winSound;
-
 // --- Scene Functions ---
 
 function preload() {
@@ -65,10 +62,13 @@ function preload() {
     graphics.fillCircle(12, 12, 12);
     graphics.generateTexture('ball_texture', 24, 24);
 
-    // Load sounds
-    this.load.audio('brick_hit', 'assets/brick_hit.wav');
-    this.load.audio('paddle_hit', 'assets/paddle_hit.wav');
-    this.load.audio('win_sound', 'assets/win_sound.wav');
+    // --- AUDIO DISABLED ---
+    // NOTE: Audio loading is commented out because modern browsers block these requests
+    // when running from a local file (e.g., 'file:///index.html') due to security policies (CORS).
+    // This was causing the game to crash.
+    // this.load.audio('brick_hit', 'assets/brick_hit.wav');
+    // this.load.audio('paddle_hit', 'assets/paddle_hit.wav');
+    // this.load.audio('win_sound', 'assets/win_sound.wav');
 }
 
 function create() {
@@ -79,10 +79,11 @@ function create() {
     createBall.call(this);
     createUI.call(this);
 
-    // Initialize sounds
-    brickHitSound = this.sound.add('brick_hit');
-    paddleHitSound = this.sound.add('paddle_hit');
-    winSound = this.sound.add('win_sound');
+    // --- AUDIO DISABLED ---
+    // NOTE: Sound initialization is commented out to prevent crashes on local file execution.
+    // brickHitSound = this.sound.add('brick_hit');
+    // paddleHitSound = this.sound.add('paddle_hit');
+    // winSound = this.sound.add('win_sound');
 
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
@@ -182,7 +183,8 @@ function hitBrick(ball, brick) {
     brick.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
-    brickHitSound.play();
+    // --- AUDIO DISABLED ---
+    // brickHitSound.play();
 
     if (bricks.countActive(true) === 0) {
         winGame.call(this);
@@ -190,7 +192,8 @@ function hitBrick(ball, brick) {
 }
 
 function hitPaddle(ball, paddle) {
-    paddleHitSound.play();
+    // --- AUDIO DISABLED ---
+    // paddleHitSound.play();
     let diff = 0;
 
     if (ball.x < paddle.x) {
@@ -232,7 +235,8 @@ function gameOver() {
 }
 
 function winGame() {
-    winSound.play();
+    // --- AUDIO DISABLED ---
+    // winSound.play();
     ball.disableBody(true, true);
     startText.setText('You Win! Click to Restart');
     startText.setVisible(true);
