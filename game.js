@@ -17,12 +17,13 @@ class GameScene extends Phaser.Scene {
                 top: 50,
                 left: 60
             },
-            padding: 10 // Added padding between bricks
+            padding: 10
         };
     }
 
     preload() {
-        // Dynamically create colored brick textures
+        // Dynamically create ball and brick textures
+        this.createBallTexture('ball', 0xffffff, 10); // Create a white ball with radius 10
         this.createBrickTexture('brick_blue', 0x0000ff);
         this.createBrickTexture('brick_green', 0x00ff00);
         this.createBrickTexture('brick_red', 0xff0000);
@@ -33,6 +34,22 @@ class GameScene extends Phaser.Scene {
         this.load.audio('ballHitPaddle', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/paddle_hit.mp3?v=1719972323714');
         this.load.audio('ballHitBrick', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/brick_hit.mp3?v=1719972322312');
         this.load.audio('loseLife', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/lose_life.mp3?v=1719972325377');
+    }
+    
+    /**
+     * Helper function to dynamically create a circular texture for the ball.
+     * @param {string} name The key to store the texture under.
+     * @param {number} color The hex color code.
+     * @param {number} radius The radius of the circle.
+     */
+    createBallTexture(name, color, radius) {
+        if (!this.textures.exists(name)) {
+            let graphics = this.make.graphics();
+            graphics.fillStyle(color);
+            graphics.fillCircle(radius, radius, radius);
+            graphics.generateTexture(name, radius * 2, radius * 2);
+            graphics.destroy();
+        }
     }
 
     /**
@@ -56,15 +73,14 @@ class GameScene extends Phaser.Scene {
         this.gameStarted = false;
 
         // --- Create Paddle ---
-        this.paddle = this.add.rectangle(400, 550, 100, 20, 0xffffff);
-        this.physics.add.existing(this.paddle);
-        this.paddle.body.setImmovable(true);
-        this.paddle.body.setCollideWorldBounds(true);
+        this.paddle = this.physics.add.sprite(400, 550, null).setDisplaySize(100, 20);
+        this.paddle.setTint(0xffffff); // Make it white
+        this.paddle.setImmovable(true);
+        this.paddle.setCollideWorldBounds(true);
 
         // --- Create Ball ---
-        this.ball = this.physics.add.image(400, 530, null);
-        this.ball.body.setCircle(10); // Give the ball a circular physics body
-        this.ball.setDisplaySize(20, 20);
+        // Use the 'ball' texture created in preload()
+        this.ball = this.physics.add.image(400, 530, 'ball');
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1);
 
@@ -76,17 +92,17 @@ class GameScene extends Phaser.Scene {
             for (let c = 0; c < this.brickInfo.count.col; c++) {
                 const brickX = this.brickInfo.offset.left + c * (this.brickInfo.width + this.brickInfo.padding);
                 const brickY = this.brickInfo.offset.top + r * (this.brickInfo.height + this.brickInfo.padding);
-                const colorKey = brickColors[r % brickColors.length]; // Cycle through colors
+                const colorKey = brickColors[r % brickColors.length];
                 
                 let brick = this.bricks.create(brickX, brickY, colorKey);
                 brick.setImmovable(true);
-                brick.setOrigin(0); // Set origin to top-left for consistent positioning
+                brick.setOrigin(0, 0);
             }
         }
 
         // --- UI Text ---
         this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#FFF' });
-        this.livesText = this.add.text(680, 16, 'Lives: 3', { fontSize: '32px', fill: '#FFF' });
+        this.livesText = this.add.text(this.sys.game.config.width - 16, 16, 'Lives: 3', { fontSize: '32px', fill: '#FFF' }).setOrigin(1, 0);
         this.startText = this.add.text(this.physics.world.bounds.width / 2, 400, 'Click to Start', { fontSize: '48px', fill: '#FFF' }).setOrigin(0.5);
 
         // --- Colliders ---
@@ -98,21 +114,21 @@ class GameScene extends Phaser.Scene {
             if (!this.gameStarted) {
                 this.startGame();
             }
-        });
+        }, this);
 
         this.input.on('pointermove', (pointer) => {
             if (this.gameStarted) {
                 this.paddle.x = Phaser.Math.Clamp(pointer.x, this.paddle.width / 2, this.physics.world.bounds.width - this.paddle.width / 2);
             }
-        });
+        }, this);
     }
 
     update() {
         if (!this.gameStarted) {
-            this.ball.setPosition(this.paddle.x, this.paddle.y - this.paddle.height - 10);
+            this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
         }
 
-        // Check if ball falls off screen
+        // Check if ball falls below the world bounds (past the paddle)
         if (this.ball.y > this.physics.world.bounds.height) {
             this.loseLife();
         }
@@ -150,7 +166,7 @@ class GameScene extends Phaser.Scene {
     }
 
     loseLife() {
-        if (!this.gameStarted) return; // Prevent multiple triggers
+        if (!this.gameStarted) return;
 
         this.sound.play('loseLife');
         this.lives--;
@@ -168,7 +184,6 @@ class GameScene extends Phaser.Scene {
         this.startText.setText('Click to Continue').setVisible(true);
         this.paddle.setPosition(400, 550);
         this.ball.setVelocity(0, 0);
-        this.ball.setPosition(this.paddle.x, this.paddle.y - this.paddle.height - 10);
     }
 
     gameOver() {
