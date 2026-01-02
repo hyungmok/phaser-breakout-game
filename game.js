@@ -103,6 +103,26 @@ function preload() {
 }
 
 function create() {
+    // --- CORS Error Prevention ---
+    // Check if the game is running via file:// protocol
+    if (window.location.protocol === 'file:') {
+        // If so, display an error message on the canvas instead of crashing.
+        const errorStyle = { 
+            fontSize: '24px', 
+            fill: '#ffdddd', 
+            fontFamily: 'Arial', 
+            align: 'center',
+            wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
+        };
+        const errorText = `
+        ERROR: Cannot load game assets.\n\nThis game must be run on a web server.\nPlease follow the instructions in the\ngame.js file comments to fix this.`;
+        
+        this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
+        
+        // Stop the rest of the create function from running
+        return; 
+    }
+
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     createBricks.call(this);
