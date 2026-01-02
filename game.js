@@ -1,9 +1,29 @@
 /**
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
+ * 
+ * --- IMPORTANT NOTE ON RUNNING THE GAME ---
+ * You are seeing a CORS error because you are opening the index.html file directly.
+ * Browsers block loading game assets (like sounds and images) from the local file system for security reasons.
+ * 
+ * To fix this, you MUST run the game from a local web server.
+ * 
+ * Here are two simple ways to do that:
+ * 
+ * 1. Using Python (if you have Python installed):
+ *    - Open a terminal or command prompt in your game's project folder.
+ *    - Run the command: `python -m http.server` (for Python 3) or `python -m SimpleHTTPServer` (for Python 2).
+ *    - Open your browser and go to: http://localhost:8000
+ * 
+ * 2. Using VS Code Live Server extension:
+ *    - Install the "Live Server" extension in Visual Studio Code.
+ *    - Right-click on your `index.html` file in the VS Code explorer.
+ *    - Select "Open with Live Server". This will automatically open the game in your browser.
+ * -----------------------------------------
+ * 
  * This version focuses on stability, clean code, and core gameplay mechanics.
  * This version is updated to scale and fit the entire browser window and fixes rendering issues.
- * This version removes all sound to resolve asset loading errors.
+ * This version removes all sound to resolve asset loading errors when running without a server.
  */
 
 // --- Game Configuration ---
