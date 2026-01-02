@@ -36,12 +36,6 @@ class GameScene extends Phaser.Scene {
         this.load.audio('loseLife', 'https://cdn.glitch.global/c9c1c385-a7dc-4927-80f0-282137c603f2/lose_life.mp3?v=1719972325377');
     }
     
-    /**
-     * Helper function to dynamically create a circular texture for the ball.
-     * @param {string} name The key to store the texture under.
-     * @param {number} color The hex color code.
-     * @param {number} radius The radius of the circle.
-     */
     createBallTexture(name, color, radius) {
         if (!this.textures.exists(name)) {
             let graphics = this.make.graphics();
@@ -52,11 +46,6 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    /**
-     * Helper function to dynamically create a colored rectangular texture.
-     * @param {string} name The key to store the texture under.
-     * @param {number} color The hex color code.
-     */
     createBrickTexture(name, color) {
         if (!this.textures.exists(name)) {
             let graphics = this.make.graphics();
@@ -72,6 +61,10 @@ class GameScene extends Phaser.Scene {
         this.lives = 3;
         this.gameStarted = false;
 
+        // --- World Physics Setup ---
+        // Allow ball to pass through the bottom of the screen for the lose-life condition
+        this.physics.world.checkCollision.down = false;
+
         // --- Create Paddle ---
         this.paddle = this.physics.add.sprite(400, 550, null).setDisplaySize(100, 20);
         this.paddle.setTint(0xffffff); // Make it white
@@ -79,8 +72,8 @@ class GameScene extends Phaser.Scene {
         this.paddle.setCollideWorldBounds(true);
 
         // --- Create Ball ---
-        // Use the 'ball' texture created in preload()
         this.ball = this.physics.add.image(400, 530, 'ball');
+        // Set ball to collide with walls (top, left, right), but not bottom (due to world setting above)
         this.ball.setCollideWorldBounds(true);
         this.ball.setBounce(1);
 
@@ -128,7 +121,7 @@ class GameScene extends Phaser.Scene {
             this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
         }
 
-        // Check if ball falls below the world bounds (past the paddle)
+        // Check if ball falls below the world bounds
         if (this.ball.y > this.physics.world.bounds.height) {
             this.loseLife();
         }
@@ -166,6 +159,7 @@ class GameScene extends Phaser.Scene {
     }
 
     loseLife() {
+        // Prevent this from running multiple times if the ball is already off-screen
         if (!this.gameStarted) return;
 
         this.sound.play('loseLife');
