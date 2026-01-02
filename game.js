@@ -86,6 +86,26 @@ let winSound;
 // --- Scene Functions ---
 
 function preload() {
+    // --- CORS Error Prevention ---
+    // Check if the game is running via file:// protocol. This is the most reliable place to check.
+    if (window.location.protocol === 'file:') {
+        // Display a clear error message on the screen.
+        const errorStyle = { 
+            fontSize: '24px', 
+            fill: '#ffdddd', 
+            fontFamily: 'Arial', 
+            align: 'center',
+            wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
+        };
+        const errorText = `ERROR: Cannot load game assets.\n\nThis game MUST be run on a web server.\nPlease see instructions in the game.js file.`;
+        
+        this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
+        
+        // Stop the scene's execution entirely. This prevents asset loading and the create function from running.
+        this.scene.stop();
+        return; 
+    }
+
     // Generate a white rectangle texture for paddle and bricks
     let graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
     graphics.fillRect(0, 0, 1, 1);
@@ -103,26 +123,6 @@ function preload() {
 }
 
 function create() {
-    // --- CORS Error Prevention ---
-    // Check if the game is running via file:// protocol
-    if (window.location.protocol === 'file:') {
-        // If so, display an error message on the canvas instead of crashing.
-        const errorStyle = { 
-            fontSize: '24px', 
-            fill: '#ffdddd', 
-            fontFamily: 'Arial', 
-            align: 'center',
-            wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
-        };
-        const errorText = `
-        ERROR: Cannot load game assets.\n\nThis game must be run on a web server.\nPlease follow the instructions in the\ngame.js file comments to fix this.`;
-        
-        this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
-        
-        // Stop the rest of the create function from running
-        return; 
-    }
-
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     createBricks.call(this);
