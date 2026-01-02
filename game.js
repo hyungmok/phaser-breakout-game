@@ -118,17 +118,22 @@ function create() {
         }
     });
 
+    // --- MODIFICATION START ---
+    // Listen to the global pointermove event to track the cursor outside the game canvas
+    this.input.on('pointermove', function (pointer) {
+        // We still want to control the paddle before the game starts
+        paddle.x = Phaser.Math.Clamp(pointer.x, 50, 750);
+    }, this);
+    // --- MODIFICATION END ---
+
+
     // Input handler to start the game
     this.input.on('pointerdown', releaseBall, this);
 }
 
 function update() {
-    if (!gameStarted) {
-        return; // Do nothing if the game hasn't started
-    }
-
-    // Move paddle with mouse/touch
-    paddle.x = Phaser.Math.Clamp(this.input.x, 50, 750);
+    // The paddle's x position is now handled by the 'pointermove' event in create(),
+    // so we don't need to update it here anymore.
 
     if (ballIsOnPaddle) {
         // Keep the ball stuck to the paddle
