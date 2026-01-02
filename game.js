@@ -2,7 +2,7 @@
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
  * This version focuses on stability, clean code, and core gameplay mechanics.
- * All assets are generated dynamically.
+ * All assets are generated dynamically, including sound effects.
  */
 
 // --- Game Configuration ---
@@ -45,10 +45,49 @@ let lives = 3;
 let gameStarted = false;
 let ballIsOnPaddle = true;
 
+// NEW: Global object to hold our dynamically generated sounds
+let sounds = {};
+
 // --- Scene Functions ---
 
 function preload() {
-    // No assets to load, everything is generated dynamically.
+    // --- Dynamic Sound Generation using Web Audio API ---
+    // This function creates a synth sound and adds it to the audio cache.
+    const createSound = (key, frequency, type = 'sine', duration = 0.1) => {
+        const audioContext = this.sound.context;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + duration);
+
+        // The actual sound is a short blip. We create a silent audio buffer
+        // to associate with the key, so we can call .play() on it.
+        // The real sound is triggered by the Web Audio API above.
+        // This is a common pattern for procedural audio in Phaser.
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        this.sound.addAudioSprite(key, { sprite: { [key]: { start: 0, end: duration } }, buffer });
+    };
+
+    // Create a helper to generate sounds and store them in our global object
+    const addSound = (key, freq, type, dur) => {
+        // A bit of a hack: create a dummy sound event that we can trigger
+        // and then play the real Web Audio sound inside the 'play' event.
+        this.sound.add(key, { volume: 0 }); // Add a silent phaser sound
+        this.sound.sounds[this.sound.sounds.length-1].on('play', () => createSound(key, freq, type, dur));
+        sounds[key] = this.sound.get(key);
+    }
+
+    addSound('brick', 800, 'square', 0.1);
+    addSound('paddle', 400, 'sine', 0.1);
+    addSound('wall', 200, 'sine', 0.1);
+    addSound('loseLife', 300, 'sawtooth', 0.3); // A lower, longer sound
 }
 
 function create() {
@@ -63,6 +102,13 @@ function create() {
     // Setup collision handlers
     this.physics.add.collider(ball, bricks, hitBrick, null, this);
     this.physics.add.collider(ball, paddle, hitPaddle, null, this);
+
+    // NEW: Add a listener for the ball hitting the world bounds (walls)
+    this.physics.world.on('worldbounds', (body, up, down, left, right) => {
+        if (body.gameObject === ball) {
+            sounds.wall.play();
+        }
+    });
 
     // Input handler to start the game
     this.input.on('pointerdown', releaseBall, this);
@@ -83,31 +129,24 @@ function update() {
 
     // Check for ball falling out of bounds
     if (ball.y > 600) {
-        loseLife.call(this); // FIX: Pass the scene context
+        loseLife.call(this);
     }
 }
 
 // --- Game Logic Functions ---
 
-/**
- * Creates the grid of bricks.
- * Uses dynamic textures for colors.
- */
 function createBricks() {
-    // Create a graphics object to draw the brick texture
     const brickGraphics = this.make.graphics({ x: 0, y: 0, add: false });
     brickGraphics.fillStyle(0xffffff);
     brickGraphics.fillRect(0, 0, 64, 32);
     brickGraphics.generateTexture('brick_white', 64, 32);
     brickGraphics.destroy();
 
-    bricks = this.physics.add.group({
-        immovable: true
-    });
+    bricks = this.physics.add.group({ immovable: true });
 
     const brickColors = [0xcc2222, 0x22cc22, 0x2222cc, 0xcccc22, 0xcc22cc, 0x22cccc];
-    for (let i = 0; i < 6; i++) { // Rows
-        for (let j = 0; j < 10; j++) { // Columns
+    for (let i = 0; i < 6; i++) {
+        for (let j = 0; j < 10; j++) {
             const brick = bricks.create(80 + j * 68, 100 + i * 36, 'brick_white');
             brick.setTint(brickColors[i]);
             brick.body.setBounce(1, 1);
@@ -115,11 +154,7 @@ function createBricks() {
     }
 }
 
-/**
- * Creates the player's paddle.
- */
 function createPaddle() {
-    // Create a dynamic texture for the paddle
     const paddleGraphics = this.make.graphics({ x: 0, y: 0, add: false });
     paddleGraphics.fillStyle(0xeeeeee);
     paddleGraphics.fillRect(0, 0, 100, 20);
@@ -129,11 +164,7 @@ function createPaddle() {
     paddle = this.physics.add.image(400, 550, 'paddle').setImmovable();
 }
 
-/**
- * Creates the ball.
- */
 function createBall() {
-    // Create a dynamic texture for the ball
     const ballGraphics = this.make.graphics({ x: 0, y: 0, add: false });
     ballGraphics.fillStyle(0xffffff);
     ballGraphics.fillCircle(12, 12, 12);
@@ -143,12 +174,9 @@ function createBall() {
     ball = this.physics.add.image(400, 526, 'ball');
     ball.setCollideWorldBounds(true);
     ball.setBounce(1, 1);
-    ball.body.onWorldBounds = true; // Enable world bounds collision event
+    ball.body.onWorldBounds = true;
 }
 
-/**
- * Creates the UI elements (score, lives, start message).
- */
 function createUI() {
     const style = { fontSize: '24px', fill: '#fff', fontFamily: 'Arial' };
     scoreText = this.add.text(16, 16, 'Score: 0', style);
@@ -161,9 +189,6 @@ function createUI() {
     }).setOrigin(0.5);
 }
 
-/**
- * Releases the ball from the paddle when the player clicks.
- */
 function releaseBall() {
     if (ballIsOnPaddle) {
         gameStarted = true;
@@ -173,121 +198,85 @@ function releaseBall() {
     }
 }
 
-/**
- * Handles the collision between the ball and a brick.
- * @param {Phaser.GameObjects.Image} ball - The ball object.
- * @param {Phaser.GameObjects.Image} brick - The brick object that was hit.
- */
 function hitBrick(ball, brick) {
     brick.disableBody(true, true);
     score += 10;
     scoreText.setText('Score: ' + score);
+    sounds.brick.play(); // NEW: Play brick hit sound
 
-    // Check for win condition
     if (bricks.countActive(true) === 0) {
-        winGame.call(this); // FIX: Pass the scene context
+        winGame.call(this);
     }
 }
 
-/**
- * Handles the collision between the ball and the paddle.
- * This implements Arkanoid-style variable bounce angles.
- * @param {Phaser.GameObjects.Image} ball - The ball object.
- * @param {Phaser.GameObjects.Image} paddle - The paddle object.
- */
 function hitPaddle(ball, paddle) {
+    sounds.paddle.play(); // NEW: Play paddle hit sound
     let diff = 0;
 
-    // Ball is on the left-hand side of the paddle
     if (ball.x < paddle.x) {
         diff = paddle.x - ball.x;
         ball.setVelocityX(-10 * diff);
-    } 
-    // Ball is on the right-hand side of the paddle
-    else if (ball.x > paddle.x) {
+    } else if (ball.x > paddle.x) {
         diff = ball.x - paddle.x;
         ball.setVelocityX(10 * diff);
-    } 
-    // Ball is perfectly in the middle
-    else {
+    } else {
         ball.setVelocityX(2 + Math.random() * 8);
     }
 }
 
-/**
- * Handles the player losing a life.
- */
 function loseLife() {
+    sounds.loseLife.play(); // NEW: Play lose life sound
     lives--;
     livesText.setText('Lives: ' + lives);
 
     if (lives === 0) {
-        gameOver.call(this); // FIX: Pass the scene context
+        gameOver.call(this);
     } else {
-        resetBall.call(this); // Also ensure context for consistency
+        resetBall.call(this);
     }
 }
 
-/**
- * Resets the ball to the paddle after losing a life.
- */
 function resetBall() {
     ballIsOnPaddle = true;
     ball.setVelocity(0, 0);
     ball.setPosition(paddle.x, 526);
 }
 
-/**
- * Handles the game over state.
- */
 function gameOver() {
     ball.disableBody(true, true);
     startText.setText('Game Over! Click to Restart');
     startText.setVisible(true);
     
-    // Add a one-time event listener to restart the game on the next click
     this.input.once('pointerdown', () => {
-        restartGame.call(this); // Pass the scene context for robustness
+        restartGame.call(this);
     }, this);
 }
 
-/**
- * Handles the win state.
- */
 function winGame() {
     ball.disableBody(true, true);
     startText.setText('You Win! Click to Restart');
     startText.setVisible(true);
 
-    // Add a one-time event listener to restart the game on the next click
     this.input.once('pointerdown', () => {
-        restartGame.call(this); // Pass the scene context for robustness
+        restartGame.call(this);
     }, this);
 }
 
-/**
- * Restarts the entire game from the beginning.
- */
 function restartGame() {
-    // Reset stats
     score = 0;
     lives = 3;
     gameStarted = false;
     ballIsOnPaddle = true;
 
-    // Reset UI
     scoreText.setText('Score: ' + score);
     livesText.setText('Lives: ' + lives);
     
-    // Make sure the restart text is the initial 'Click to Start'
     startText.setText('Click to Start');
     startText.setVisible(true);
     
-    // Reset ball position and state
     ball.enableBody(true, paddle.x, 526, true, true);
     ball.setVelocity(0, 0);
 
-    // Reset all bricks
     bricks.children.each(function (brick) {
         brick.enableBody(true, brick.x, brick.y, true, true);
     });
