@@ -73,15 +73,19 @@ class GameScene extends Phaser.Scene {
 
         // --- Create Ball ---
         this.ball = this.physics.add.image(400, 530, 'ball');
-        // Set ball to collide with walls (top, left, right), but not bottom (due to world setting above)
-        this.ball.setCollideWorldBounds(true);
-        this.ball.setBounce(1);
-        // *** FIX: Set the physics body to be a circle to prevent getting stuck on corners ***
+        // *** FIX: Refine physics properties to prevent sticking ***
+        // Set the physics body to be a circle
         this.ball.setCircle(this.ball.width / 2);
+        // Set perfect bounce, no energy loss on collision
+        this.ball.setBounce(1, 1);
+        // Remove all friction
+        this.ball.setFriction(0, 0);
+        // Ensure it collides with the world boundaries (top, left, right)
+        this.ball.setCollideWorldBounds(true);
 
 
         // --- Create Bricks with different colors per row ---
-        this.bricks = this.physics.add.group();
+        this.bricks = this.physics.add.staticGroup(); // Use staticGroup for immovable bricks
         const brickColors = ['brick_red', 'brick_yellow', 'brick_green', 'brick_blue', 'brick_purple'];
 
         for (let r = 0; r < this.brickInfo.count.row; r++) {
@@ -91,8 +95,8 @@ class GameScene extends Phaser.Scene {
                 const colorKey = brickColors[r % brickColors.length];
                 
                 let brick = this.bricks.create(brickX, brickY, colorKey);
-                brick.setImmovable(true);
-                brick.setOrigin(0, 0);
+                // For staticGroup, you don't need setImmovable(true), but you need to refresh the body
+                brick.setOrigin(0, 0).refreshBody();
             }
         }
 
@@ -125,7 +129,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // Check if ball falls below the world bounds
-        if (this.ball.y > this.physics.world.bounds.height) {
+        if (this.ball.y > this.physics.world.bounds.height + this.ball.height) {
             this.loseLife();
         }
     }
@@ -133,7 +137,7 @@ class GameScene extends Phaser.Scene {
     startGame() {
         this.gameStarted = true;
         this.startText.setVisible(false);
-        this.ball.setVelocity(-75, -300);
+        this.ball.setVelocity(-200, -300); // Increased initial velocity slightly for better feel
     }
 
     ballHitPaddle(ball, paddle) {
@@ -155,6 +159,13 @@ class GameScene extends Phaser.Scene {
         brick.disableBody(true, true);
         this.score += 10;
         this.scoreText.setText('Score: ' + this.score);
+
+        // Make sure ball velocity doesn't drop too low after multiple hits
+        const minSpeed = 300;
+        const currentSpeed = Math.sqrt(ball.body.velocity.x ** 2 + ball.body.velocity.y ** 2);
+        if (currentSpeed < minSpeed) {
+            ball.body.velocity.scale(minSpeed / currentSpeed);
+        }
 
         if (this.bricks.countActive() === 0) {
             this.winGame();
@@ -178,9 +189,12 @@ class GameScene extends Phaser.Scene {
     
     resetLevel() {
         this.gameStarted = false;
-        this.startText.setText('Click to Continue').setVisible(true);
-        this.paddle.setPosition(400, 550);
+        // Also stop the ball and reset its position immediately
         this.ball.setVelocity(0, 0);
+        this.paddle.setPosition(400, 550);
+        this.ball.setPosition(this.paddle.x, this.paddle.y - (this.paddle.height / 2) - this.ball.height / 2);
+
+        this.startText.setText('Click to Continue').setVisible(true);
     }
 
     gameOver() {
