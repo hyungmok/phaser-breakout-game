@@ -2,9 +2,27 @@
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
  * 
- * --- IMPORTANT NOTE ON RUNNING THE GAME ---
+ * --- 🚨 중요: 게임 실행 방법 (CORS 에러 해결) ---
+ * 현재 CORS 정책 에러가 발생하는 이유는 `index.html` 파일을 브라우저에서 직접 열었기 때문입니다.
+ * 보안상의 이유로, 브라우저는 로컬 파일 시스템(`file:///`)에서 다른 파일(사운드, 이미지 등)을 불러오는 것을 차단합니다.
+ * 
+ * 이 문제를 해결하려면, 반드시 로컬 웹 서버를 통해 게임을 실행해야 합니다.
+ * 
+ * 가장 간단한 두 가지 방법:
+ * 
+ * 1. Python을 사용하는 방법 (Python이 설치되어 있다면):
+ *    - 터미널이나 명령 프롬프트를 열고 이 게임 프로젝트 폴더로 이동합니다.
+ *    - `python -m http.server` (Python 3) 또는 `python -m SimpleHTTPServer` (Python 2) 명령어를 실행합니다.
+ *    - 브라우저를 열고 `http://localhost:8000` 주소로 접속합니다.
+ * 
+ * 2. VS Code의 'Live Server' 확장 프로그램 사용:
+ *    - Visual Studio Code에서 "Live Server" 확장 프로그램을 설치합니다.
+ *    - VS Code 파일 탐색기에서 `index.html` 파일을 마우스 오른쪽 버튼으로 클릭합니다.
+ *    - "Open with Live Server"를 선택하면 자동으로 브라우저에서 게임이 열립니다.
+ * 
+ * --- IMPORTANT NOTE ON RUNNING THE GAME (FIXING CORS ERROR) ---
  * You are seeing a CORS error because you are opening the index.html file directly.
- * Browsers block loading game assets (like sounds and images) from the local file system for security reasons.
+ * For security reasons, browsers block loading game assets (like sounds and images) from the local file system (`file:///`).
  * 
  * To fix this, you MUST run the game from a local web server.
  * 
