@@ -1,37 +1,6 @@
 /**
  * @author Maya, Game Developer
  * @description A complete rewrite of a Breakout/Arkanoid style game in Phaser 3.
- * 
- * --- 🚨 중요: 게임 실행 방법 (CORS 에러 해결) ---
- * 웹서버를 실행하지 않고 `index.html` 파일을 직접 브라우저에서 열면, CORS 보안 정책 때문에 사운드 같은 외부 파일을 불러올 수 없습니다.
- * 이것은 브라우저의 정상적인 보안 동작이며, 코드를 수정해서 해결할 수 있는 문제가 아닙니다.
- * 
- * 반드시 아래 방법 중 하나를 사용해 로컬 웹 서버를 실행해야 합니다.
- * 
- * 1. Python을 사용하는 방법 (가장 간단):
- *    - 터미널(CMD)을 열고 이 게임 프로젝트 폴더로 이동합니다.
- *    - `python -m http.server` 라고 입력하고 엔터를 칩니다.
- *    - 웹 브라우저 주소창에 `http://localhost:8000` 을 입력해 접속합니다.
- * 
- * 2. VS Code의 'Live Server' 확장 프로그램 사용:
- *    - VS Code 마켓플레이스에서 "Live Server"를 검색해 설치합니다.
- *    - `index.html` 파일을 마우스 오른쪽 버튼으로 클릭하고 "Open with Live Server"를 선택합니다.
- * 
- * --- IMPORTANT: HOW TO RUN THE GAME (FIXING CORS ERROR) ---
- * If you open the `index.html` file directly in your browser without a web server, you will get a CORS security error.
- * This is a standard browser security feature and cannot be fixed by changing the game code.
- * 
- * You MUST run the game using a local web server. Here are two easy ways:
- * 
- * 1. Using Python (easiest method):
- *    - Open a terminal (CMD) in this project folder.
- *    - Type `python -m http.server` and press Enter.
- *    - In your web browser, go to `http://localhost:8000`.
- * 
- * 2. Using VS Code 'Live Server' Extension:
- *    - Install the "Live Server" extension from the VS Code Marketplace.
- *    - Right-click the `index.html` file and choose "Open with Live Server".
- * -----------------------------------------
  */
 
 // --- Game Configuration ---
@@ -86,24 +55,6 @@ let winSound;
 // --- Scene Functions ---
 
 function preload() {
-    // --- CORS Error Prevention ---
-    // Check if the game is running via file:// protocol.
-    if (window.location.protocol === 'file:') {
-        // Display a clear error message on the screen after the loader finishes its (empty) queue.
-        this.load.on('complete', () => {
-            const errorStyle = { 
-                fontSize: '24px', 
-                fill: '#ffdddd', 
-                fontFamily: 'Arial', 
-                align: 'center',
-                wordWrap: { width: this.scale.width - 40, useAdvancedWrap: true }
-            };
-            const errorText = `ERROR: Cannot load game assets.\n\nThis game MUST be run on a web server.\nPlease see instructions in the game.js file.`;
-            this.add.text(this.scale.width / 2, this.scale.height / 2, errorText, errorStyle).setOrigin(0.5);
-        });
-        return; // Stop adding any assets to the load queue.
-    }
-
     // Generate a white rectangle texture for paddle and bricks
     let graphics = this.make.graphics({ fillStyle: { color: 0xffffff }, add: false });
     graphics.fillRect(0, 0, 1, 1);
@@ -121,12 +72,6 @@ function preload() {
 }
 
 function create() {
-    // --- CORS Error Prevention: Final Safeguard ---
-    // If preload was stopped due to file:// protocol, this halts create() from running and crashing.
-    if (window.location.protocol === 'file:') {
-        return; // Halt execution immediately.
-    }
-
     this.physics.world.setBoundsCollision(true, true, true, false);
 
     createBricks.call(this);
